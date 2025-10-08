@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* App defaults */
+html, body, #root { height: 100%; }
+
+/* Smooth focus styles */
+:focus-visible { outline: 2px solid theme('colors.accent.DEFAULT'); outline-offset: 2px; }
