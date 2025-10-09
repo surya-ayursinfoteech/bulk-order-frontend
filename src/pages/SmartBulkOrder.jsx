@@ -1,4 +1,3 @@
-// src/pages/SmartBulkOrder.jsx
 import { useMemo, useState } from "react";
 import { Shield, Sparkles, CheckCircle } from "lucide-react";
 
@@ -10,120 +9,136 @@ import OrderPreview from "../components/smartbulkorder/OrderPreview";
 import OrderDetails from "../components/smartbulkorder/OrderDetails";
 import ConfirmModal from "../components/smartbulkorder/ConfirmModal";
 
-/* data & utils */
-import { CATALOG } from "../components/smartbulkorder/catalog";
+/* utils */
 import { friendlyNameFromUrl } from "../components/smartbulkorder/utils";
+import { sendBulkOrder } from "../services/BulkOrderService";
+
+/* service */
+
+
+const isValidProductUrl = (url) =>
+  /^https?:\/\/(www\.)?(flipkart\.com|shopsy\.in)\/.+/i.test(url || "");
 
 export default function SmartBulkOrder() {
-  /* ---------- Product selection ---------- */
-  const [mode, setMode] = useState("url");
   const [productUrl, setProductUrl] = useState("");
-  const [search, setSearch] = useState("");
-  const [picked, setPicked] = useState(null);
-  const [showSuggest, setShowSuggest] = useState(false);
 
-  /* ---------- Quantities ---------- */
+  /* quantities */
   const [totalQty, setTotalQty] = useState("");
   const [qtyPerOrder, setQtyPerOrder] = useState("");
 
-  /* ---------- Email IDs ---------- */
-  const [smartId, setSmartId] = useState(true);
-  const [retryPerId, setRetryPerId] = useState(0);
+  /* uploads */
+  const [emailsData, setEmailsData] = useState([]);
+  const [cardsData, setCardsData] = useState([]);
+  const [emailFile, setEmailFile] = useState(null);
+  const [cardFile, setCardFile] = useState(null);
 
-  /* ---------- Cards ---------- */
-  const [cardType, setCardType] = useState("HDFC_VIRTUAL");
-  const [authType, setAuthType] = useState("Password");
-  const [corporateId, setCorporateId] = useState("MYFRIE");
-
-  /* ---------- Order Details ---------- */
+  /* minimal order details */
   const [cartLimit, setCartLimit] = useState("");
   const [finalLimit, setFinalLimit] = useState("");
   const [maxDays, setMaxDays] = useState("");
-  const [deliveryAddress, setDeliveryAddress] = useState("Demo Address 1");
-  const [gstNumber, setGstNumber] = useState("GST Number 1");
-  const [gstMandatory, setGstMandatory] = useState(false);
-  const [rewardIds, setRewardIds] = useState(false);
+  const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [gstNumber, setGstNumber] = useState("");
   const [couponCodes, setCouponCodes] = useState("");
+  const [rewardIds, setRewardIds] = useState("");
 
-  /* ---------- Modal ---------- */
+  /* modal + submit state */
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmPayload, setConfirmPayload] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitResult, setSubmitResult] = useState(null); // {ok, status, data|error}
 
-  /* ---------- Derived ---------- */
-  const showQtyFields =
-    (mode === "url" && productUrl.trim().length > 6) ||
-    (mode === "search" && picked !== null);
-
-  const suggestions = useMemo(() => {
-    if (mode !== "search") return [];
-    const q = (search || "").trim().toLowerCase();
-    if (!q) return [];
-    return CATALOG.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.tags.some((t) => t.toLowerCase().includes(q))
-    ).slice(0, 5);
-  }, [mode, search]);
+  const showQtyFields = isValidProductUrl(productUrl);
 
   const preview = useMemo(() => {
-    if (picked) return picked;
-    if (mode === "url" && productUrl) {
-      return {
-        id: "from-url",
-        name: friendlyNameFromUrl(productUrl),
-        price: 0,
-        mrp: 0,
-        tags: ["Product"],
-        color: "—",
-        capacity: "—",
-        stock: true,
-      };
-    }
-    return null;
-  }, [picked, productUrl, mode]);
+    if (!productUrl) return null;
+    return {
+      id: "from-url",
+      name: friendlyNameFromUrl(productUrl),
+      url: productUrl,
+      stock: true,
+    };
+  }, [productUrl]);
 
   const totalUnits = Number(totalQty || 0);
   const unitsPerOrder = Number(qtyPerOrder || 0);
 
-  /* ---------- Submit -> open modal ---------- */
   const handleOpenConfirm = () => {
     if (!preview || !showQtyFields) return;
 
-    const payload = {
-      product: preview,
-      selection: { mode, productUrl },
-      quantities: { totalQty: totalUnits, qtyPerOrder: unitsPerOrder },
-      email: { smartId, retryPerId: Number(retryPerId || 0) },
-      cards: { cardType, authType, corporateId },
-      orderDetails: {
-        cartLimit: Number(cartLimit || 0),
-        finalLimit: Number(finalLimit || 0),
-        maxDays: Number(maxDays || 0),
-        deliveryAddress,
-        gstNumber,
-        gstMandatory,
-        rewardIds,
-        couponCodes: (couponCodes || "").trim(),
-      },
-      deliveryBilling: {
-        company: "Flightpath Infogain Private Limited",
-        addressLines: [
-          "Plot No. D-47",
-          "Udyog Vihar, Phase-V",
-          "Gurugram, Haryana – 122016",
-        ],
-        gstin: "06AAECF6022E1Z3",
-      },
+    const request = {
+      product_url: productUrl,
+      total_quantity: totalUnits,
+      quantity_per_order: unitsPerOrder,
+      platform: "Flipkart",
+      order_status: "In_Progress",
+      cart_amount_limit: Number(cartLimit || 0),
+      final_amount_limit: Number(finalLimit || 0),
+      max_delivery_days: Number(maxDays || 0),
+      delivery_address: (deliveryAddress || "").trim(),
+      gst_details: (gstNumber || "").trim(),
+      coupon_codes: (couponCodes || "").trim(),
+      reward_ids: (rewardIds || "").trim(),
     };
 
-    setConfirmPayload(payload);
+    setSubmitResult(null);
+    setConfirmPayload({
+      request,
+      files: {
+        cardFile: cardFile ? cardFile.name : null,
+        userFile: emailFile ? emailFile.name : null,
+      },
+      counts: {
+        emails: emailsData.length,
+        cards: cardsData.length,
+      },
+    });
+
     setConfirmOpen(true);
   };
 
-  const handleFinalSubmit = () => {
-    console.log("Final submit payload:", confirmPayload);
-    setConfirmOpen(false);
-    alert("Order placed successfully (demo). Check console for payload.");
+  const handleFinalSubmit = async () => {
+    if (submitting) return;
+
+    setSubmitting(true);
+    setSubmitResult(null);
+
+    try {
+      const form = new FormData();
+
+      if (cardFile) form.append("cardFile", cardFile);
+      if (emailFile) form.append("userFile", emailFile);
+
+      // IMPORTANT: attach request as JSON Blob so it's sent as type=application/json (like your curl)
+      const req = {
+        product_url: productUrl,
+        total_quantity: totalUnits,
+        quantity_per_order: unitsPerOrder,
+        platform: "Flipkart",
+        order_status: "In_Progress",
+        cart_amount_limit: Number(cartLimit || 0),
+        final_amount_limit: Number(finalLimit || 0),
+        max_delivery_days: Number(maxDays || 0),
+        delivery_address: (deliveryAddress || "").trim(),
+        gst_details: (gstNumber || "").trim(),
+        coupon_codes: (couponCodes || "").trim(),
+        reward_ids: (rewardIds || "").trim(),
+      };
+      form.append("request", new Blob([JSON.stringify(req)], { type: "application/json" }));
+
+      const result = await sendBulkOrder(form);
+      setSubmitResult(result);
+
+      // auto-close on success after a short delay (optional)
+      if (result.ok) {
+        setTimeout(() => {
+          setConfirmOpen(false);
+        }, 1200);
+      }
+    } catch (e) {
+      setSubmitResult({ ok: false, status: 0, error: e?.message || "Unexpected error" });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -145,21 +160,13 @@ export default function SmartBulkOrder() {
         </div>
       </div>
 
+      {/* Content */}
       <div className="w-full px-4 md:px-6 py-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* LEFT: form stack */}
         <div className="lg:col-span-2 space-y-6">
           <ProductSelector
-            mode={mode}
-            setMode={setMode}
             productUrl={productUrl}
             setProductUrl={setProductUrl}
-            search={search}
-            setSearch={setSearch}
-            suggestions={suggestions}
-            picked={picked}
-            setPicked={setPicked}
-            showSuggest={showSuggest}
-            setShowSuggest={setShowSuggest}
             showQtyFields={showQtyFields}
             totalQty={totalQty}
             setTotalQty={setTotalQty}
@@ -168,22 +175,35 @@ export default function SmartBulkOrder() {
             preview={preview}
           />
 
+          {/* Email CSV */}
           <EmailIds
-            smartId={smartId}
-            setSmartId={setSmartId}
-            retryPerId={retryPerId}
-            setRetryPerId={setRetryPerId}
+            onUpload={(payload) => {
+              if (Array.isArray(payload)) {
+                setEmailsData(payload);
+                setEmailFile(null);
+              } else {
+                setEmailsData(payload?.rows || []);
+                setEmailFile(payload?.file || null);
+              }
+            }}
+            count={emailsData.length}
           />
 
+          {/* Cards CSV */}
           <CardsSection
-            cardType={cardType}
-            setCardType={setCardType}
-            corporateId={corporateId}
-            setCorporateId={setCorporateId}
-            authType={authType}
-            setAuthType={setAuthType}
+            onUpload={(payload) => {
+              if (Array.isArray(payload)) {
+                setCardsData(payload);
+                setCardFile(null);
+              } else {
+                setCardsData(payload?.rows || []);
+                setCardFile(payload?.file || null);
+              }
+            }}
+            count={cardsData.length}
           />
 
+          {/* Order details */}
           <OrderDetails
             cartLimit={cartLimit}
             setCartLimit={setCartLimit}
@@ -195,12 +215,10 @@ export default function SmartBulkOrder() {
             setDeliveryAddress={setDeliveryAddress}
             gstNumber={gstNumber}
             setGstNumber={setGstNumber}
-            gstMandatory={gstMandatory}
-            setGstMandatory={setGstMandatory}
-            rewardIds={rewardIds}
-            setRewardIds={setRewardIds}
             couponCodes={couponCodes}
             setCouponCodes={setCouponCodes}
+            rewardIds={rewardIds}
+            setRewardIds={setRewardIds}
           />
         </div>
 
@@ -224,9 +242,15 @@ export default function SmartBulkOrder() {
                 preview={preview}
                 totalUnits={totalUnits}
                 unitsPerOrder={unitsPerOrder}
-                cardType={cardType}
-                corporateId={corporateId}
-                smartId={smartId}
+                emailsCount={emailsData.length}
+                cardsCount={cardsData.length}
+                cartLimit={cartLimit}
+                finalLimit={finalLimit}
+                maxDays={maxDays}
+                deliveryAddress={deliveryAddress}
+                gstNumber={gstNumber}
+                couponCodes={couponCodes}
+                rewardIds={rewardIds}
               />
 
               <button
@@ -241,7 +265,7 @@ export default function SmartBulkOrder() {
               {!preview && (
                 <div className="text-center p-4 rounded-lg bg-gray-100 border border-gray-200">
                   <p className="text-xs text-gray-600">
-                    Select a product to see the preview
+                    Paste a product URL to see the preview
                   </p>
                 </div>
               )}
@@ -256,6 +280,8 @@ export default function SmartBulkOrder() {
         payload={confirmPayload}
         onCancel={() => setConfirmOpen(false)}
         onFinalSubmit={handleFinalSubmit}
+        submitting={submitting}
+        submitResult={submitResult}
       />
     </div>
   );
