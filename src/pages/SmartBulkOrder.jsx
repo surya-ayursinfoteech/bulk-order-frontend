@@ -13,9 +13,7 @@ import ConfirmModal from "../components/smartbulkorder/ConfirmModal";
 import { friendlyNameFromUrl } from "../components/smartbulkorder/utils";
 import { sendBulkOrder } from "../services/BulkOrderService";
 
-/* service */
-
-
+/* helpers */
 const isValidProductUrl = (url) =>
   /^https?:\/\/(www\.)?(flipkart\.com|shopsy\.in)\/.+/i.test(url || "");
 
@@ -32,7 +30,7 @@ export default function SmartBulkOrder() {
   const [emailFile, setEmailFile] = useState(null);
   const [cardFile, setCardFile] = useState(null);
 
-  /* minimal order details */
+  /* order details */
   const [cartLimit, setCartLimit] = useState("");
   const [finalLimit, setFinalLimit] = useState("");
   const [maxDays, setMaxDays] = useState("");
@@ -65,12 +63,16 @@ export default function SmartBulkOrder() {
   const handleOpenConfirm = () => {
     if (!preview || !showQtyFields) return;
 
+    // Force UPPERCASE for platform & status here as well
+    const platform = "FLIPKART".toUpperCase();
+    const order_status = "IN_PROGRESS".toUpperCase();
+
     const request = {
       product_url: productUrl,
       total_quantity: totalUnits,
       quantity_per_order: unitsPerOrder,
-      platform: "Flipkart",
-      order_status: "In_Progress",
+      platform,        // FLIPKART
+      order_status,    // IN_PROGRESS
       cart_amount_limit: Number(cartLimit || 0),
       final_amount_limit: Number(finalLimit || 0),
       max_delivery_days: Number(maxDays || 0),
@@ -108,13 +110,13 @@ export default function SmartBulkOrder() {
       if (cardFile) form.append("cardFile", cardFile);
       if (emailFile) form.append("userFile", emailFile);
 
-      // IMPORTANT: attach request as JSON Blob so it's sent as type=application/json (like your curl)
+      // Force UPPERCASE again right before submit (ultimate guard)
       const req = {
         product_url: productUrl,
         total_quantity: totalUnits,
         quantity_per_order: unitsPerOrder,
-        platform: "Flipkart",
-        order_status: "In_Progress",
+        platform: "FLIPKART".toUpperCase(),
+        order_status: "IN_PROGRESS".toUpperCase(),
         cart_amount_limit: Number(cartLimit || 0),
         final_amount_limit: Number(finalLimit || 0),
         max_delivery_days: Number(maxDays || 0),
@@ -123,16 +125,15 @@ export default function SmartBulkOrder() {
         coupon_codes: (couponCodes || "").trim(),
         reward_ids: (rewardIds || "").trim(),
       };
+
+      // Attach JSON as Blob to match curl's type=application/json
       form.append("request", new Blob([JSON.stringify(req)], { type: "application/json" }));
 
       const result = await sendBulkOrder(form);
       setSubmitResult(result);
 
-      // auto-close on success after a short delay (optional)
       if (result.ok) {
-        setTimeout(() => {
-          setConfirmOpen(false);
-        }, 1200);
+        setTimeout(() => setConfirmOpen(false), 1200);
       }
     } catch (e) {
       setSubmitResult({ ok: false, status: 0, error: e?.message || "Unexpected error" });

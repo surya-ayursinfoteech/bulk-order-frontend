@@ -170,11 +170,11 @@ export default function EmailIds({ onUpload, count = 0 }) {
   const downloadTemplate = () => {
     const header = EMAIL_HEADERS.join(",");
     const sample = [
-      "manish.kanyal.70@gmail.com,1234,7906563132,Active,HALDWANI",
-      "manish.kanyal.71@gmail.com,1234,7906563132,Active,HALDWANI",
-      "manish.kanyal.72@gmail.com,1234,7906563132,Active,HALDWANI",
-      "manish.kanyal.73@gmail.com,1234,7906563132,Active,HALDWANI",
-      "manish.kanyal.74@gmail.com,1234,7906563132,Active,HALDWANI",
+      "Shubham.kanyal.70@gmail.com,1234,7906563132,ACTIVE,HALDWANI",
+      "manish.kanyal.71@gmail.com,1234,7906563132,ACTIVE,HALDWANI",
+      "manish.kanyal.72@gmail.com,1234,7906563132,ACTIVE,HALDWANI",
+      "manish.kanyal.73@gmail.com,1234,7906563132,ACTIVE,HALDWANI",
+      "manish.kanyal.74@gmail.com,1234,7906563132,ACTIVE,HALDWANI",
     ].join("\n");
 
     const csv = `${header}\n${sample}\n`;

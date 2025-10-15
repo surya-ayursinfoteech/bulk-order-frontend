@@ -1,209 +1,144 @@
 // src/pages/Orders.jsx
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { RotateCw, Download, Package, Calendar } from "lucide-react";
 import OrdersTable from "../components/orders/OrdersTable";
-import { RotateCw, ChevronDown, Download, Package, Sparkles } from "lucide-react";
+import CardDetailsModal from "../components/orders/CardDetailsModal";
+import UserDetailsModal from "../components/orders/UserDetailsModal";
+import {
+  fetchOrderRequests,
+  fetchCardDetails,
+  fetchUserDetails,
+} from "../services/orderService";
 
-/** Demo rows (replace with API later) */
-const DEMO = [
-  {
-    id: "O-1009",
-    createdAt: "Aug 22, 09:40",
-    status: "processing",
-    product: { name: "POCO C71", color: "Cool Blue", spec: "4 • 64" },
-    quantity: { total: 1, perOrder: 1 },
-    units: { done: 0, total: 5, pct: 0 },
-    orders: { success: 0, failed: 0, pending: 1 },
-    user: "demouser",
-    corporateId: "MYFRIE",
-    cardType: "ICICI_CORP_VIRTUAL",
-    addressLabel: "Flightpath Gurugram",
-    gstLabel: "Flightpath HR",
-    timeTaken: "N/A",
-  },
-  {
-    id: "O-1008",
-    createdAt: "Aug 21, 14:56",
-    status: "processing",
-    product: { name: "POCO C71", color: "Cool Blue", spec: "4 • 64" },
-    quantity: { total: 1, perOrder: 1 },
-    units: { done: 0, total: 5, pct: 0 },
-    orders: { success: 0, failed: 0, pending: 1 },
-    user: "demouser",
-    corporateId: "MYFRIE",
-    cardType: "ICICI_CORP_VIRTUAL",
-    addressLabel: "Flightpath Gurugram",
-    gstLabel: "Flightpath HR",
-    timeTaken: "N/A",
-  },
-  {
-    id: "O-1007",
-    createdAt: "Aug 20, 16:32",
-    status: "cancelled",
-    product: { name: "realme C61", color: "Safari Green", spec: "4 • 64" },
-    quantity: { total: 100, perOrder: 1 },
-    units: { done: 12, total: 100, pct: 12 },
-    orders: { success: 12, failed: 9, pending: 0 },
-    user: "demouser",
-    corporateId: "MYFRIE",
-    cardType: "ICICI_CORP_VIRTUAL",
-    addressLabel: "Flightpath Gurugram",
-    gstLabel: "Flightpath HR",
-    timeTaken: "N/A",
-  },
-  {
-    id: "O-1006",
-    createdAt: "Aug 20, 16:31",
-    status: "cancelled",
-    product: { name: "realme C61", color: "Safari Green", spec: "4 • 64" },
-    quantity: { total: 100, perOrder: 1 },
-    units: { done: 6, total: 100, pct: 6 },
-    orders: { success: 6, failed: 9, pending: 0 },
-    user: "demouser",
-    corporateId: "MYFRIE",
-    cardType: "ICICI_CORP_VIRTUAL",
-    addressLabel: "Flightpath Gurugram",
-    gstLabel: "Flightpath HR",
-    timeTaken: "N/A",
-  },
-  {
-    id: "O-1005",
-    createdAt: "Aug 20, 16:27",
-    status: "cancelled",
-    product: { name: "realme C61", color: "Safari Green", spec: "4 • 64" },
-    quantity: { total: 100, perOrder: 1 },
-    units: { done: 0, total: 100, pct: 0 },
-    orders: { success: 0, failed: 6, pending: 0 },
-    user: "demouser",
-    corporateId: "MYFRIE",
-    cardType: "ICICI_CORP_VIRTUAL",
-    addressLabel: "Flightpath Gurugram",
-    gstLabel: "Flightpath HR",
-    timeTaken: "N/A",
-  },
-  {
-    id: "O-1004",
-    createdAt: "Aug 20, 15:20",
-    status: "cancelled",
-    product: { name: "POCO C71", color: "Cool Blue", spec: "4 • 64" },
-    quantity: { total: 100, perOrder: 1 },
-    units: { done: 1, total: 100, pct: 1 },
-    orders: { success: 1, failed: 2, pending: 1 },
-    user: "demouser",
-    corporateId: "MYFRIE",
-    cardType: "ICICI_CORP_VIRTUAL",
-    addressLabel: "Flightpath Gurugram",
-    gstLabel: "Flightpath HR",
-    timeTaken: "5m 14s",
-  },
-  {
-    id: "O-1003",
-    createdAt: "Aug 20, 15:40",
-    status: "completed",
-    product: { name: "POCO C71", color: "Cool Blue", spec: "4 • 64" },
-    quantity: { total: 5, perOrder: 1 },
-    units: { done: 5, total: 5, pct: 100 },
-    orders: { success: 3, failed: 0, pending: 0 },
-    user: "demouser",
-    corporateId: "MYFRIE",
-    cardType: "ICICI_CORP_VIRTUAL",
-    addressLabel: "Flightpath Gurugram",
-    gstLabel: "Flightpath HR",
-    timeTaken: "3m 59s",
-  },
-  {
-    id: "O-1002",
-    createdAt: "Aug 20, 15:12",
-    status: "queued",
-    product: { name: "Samsung M14", color: "Navy Blue", spec: "6 • 128" },
-    quantity: { total: 10, perOrder: 2 },
-    units: { done: 0, total: 10, pct: 0 },
-    orders: { success: 0, failed: 0, pending: 0 },
-    user: "opslead",
-    corporateId: "MYFRIE",
-    cardType: "HDFC_VIRTUAL",
-    addressLabel: "Warehouse 1",
-    gstLabel: "Flightpath HR",
-    timeTaken: "N/A",
-  },
-  {
-    id: "O-1001",
-    createdAt: "Aug 19, 11:05",
-    status: "completed",
-    product: { name: "LG Inverter AC", color: "White", spec: "1.5T" },
-    quantity: { total: 3, perOrder: 1 },
-    units: { done: 3, total: 3, pct: 100 },
-    orders: { success: 3, failed: 0, pending: 0 },
-    user: "admin",
-    corporateId: "MYFRIE",
-    cardType: "AXIS_VIRTUAL",
-    addressLabel: "Office Delhi",
-    gstLabel: "Flightpath Finance",
-    timeTaken: "12m 02s",
-  },
-];
+/* ---------- date helpers ---------- */
+const pad = (n) => String(n).padStart(2, "0");
+const fmtDateInput = (d) =>
+  `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
 export default function Orders() {
-  const [tab, setTab] = useState("bulk");
-  const [range, setRange] = useState("24h");
+  // Default last 30 days
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
+  // size control (rows per load)
+  const [sizeMode, setSizeMode] = useState("10"); // "10" | "50" | "custom"
+  const [customSize, setCustomSize] = useState("25");
+  const effectiveSize = useMemo(() => {
+    if (sizeMode === "10") return 10;
+    if (sizeMode === "50") return 50;
+    const n = Number(customSize);
+    return Number.isFinite(n) && n > 0 ? Math.min(1000, Math.max(1, n)) : 10;
+  }, [sizeMode, customSize]);
+
+  // data + ui states
+  const [rows, setRows] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [err, setErr] = useState("");
 
-  const bulkRows = useMemo(() => DEMO, []);
-  const allRows = useMemo(
-    () => DEMO.map((r, i) => ({ ...r, id: r.id + (i % 2 === 0 ? "" : "-A") })),
-    []
-  );
+  // modals
+  const [cardsOpen, setCardsOpen] = useState(false);
+  const [usersOpen, setUsersOpen] = useState(false);
+  const [modalLoading, setModalLoading] = useState(false);
+  const [cardRows, setCardRows] = useState([]);
+  const [userRows, setUserRows] = useState([]);
+  const [activeOrderRequestId, setActiveOrderRequestId] = useState(null);
 
-  const rows = tab === "bulk" ? bulkRows : allRows;
+  // init last 30d
+  useEffect(() => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - 29);
+    setStartDate(fmtDateInput(start));
+    setEndDate(fmtDateInput(end));
+  }, []);
 
-  const handleRefresh = () => {
+  // fetch on filters/size change
+  useEffect(() => {
+    if (!startDate || !endDate) return;
+    let active = true;
+
+    setLoading(true);
+    setErr("");
+
+    (async () => {
+      try {
+        const res = await fetchOrderRequests({
+          page: 0,
+          size: effectiveSize,
+          startDate,
+          endDate,
+        });
+        if (!active) return;
+        setRows(res.content || []);
+        setTotal(res.total || 0);
+      } catch (e) {
+        if (!active) return;
+        setErr(e.message || "Failed to load orders.");
+        setRows([]);
+        setTotal(0);
+      } finally {
+        if (!active) return;
+        setLoading(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [startDate, endDate, effectiveSize]);
+
+  const handleRefresh = async () => {
     setIsRefreshing(true);
-    setTimeout(() => setIsRefreshing(false), 700);
+    try {
+      const res = await fetchOrderRequests({
+        page: 0,
+        size: effectiveSize,
+        startDate,
+        endDate,
+      });
+      setRows(res.content || []);
+      setTotal(res.total || 0);
+    } catch (e) {
+      setErr(e.message || "Failed to refresh.");
+      setRows([]);
+      setTotal(0);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const handleDownloadCSV = () => {
     const headers = [
-      "ID",
-      "Created",
-      "Status",
-      "Product",
-      "Spec",
-      "Color",
-      "Qty Total",
+      "Order Req ID",
+      "Platform",
+      "Product URL",
+      "Total Qty",
       "Qty/Order",
-      "Units Done",
-      "Units Total",
-      "Units %",
-      "Orders ✓",
-      "Orders ✗",
-      "Orders ⏳",
-      "User",
-      "Corporate ID",
-      "Card Type",
-      "Address Label",
-      "GST Label",
-      "Time Taken",
+      "Status",
+      "Cart Limit",
+      "Final Limit",
+      "Max Days",
+      "Delivery Address",
+      "GST",
+      "Coupon",
+      "Rewards",
     ];
     const toRow = (r) => [
-      r.id,
-      r.createdAt,
-      r.status,
-      r.product.name,
-      r.product.spec,
-      r.product.color,
-      r.quantity.total,
-      r.quantity.perOrder,
-      r.units.done,
-      r.units.total,
-      r.units.pct,
-      r.orders.success,
-      r.orders.failed,
-      r.orders.pending,
-      r.user,
-      r.corporateId,
-      r.cardType,
-      r.addressLabel,
-      r.gstLabel,
-      r.timeTaken,
+      r.order_request_id,
+      r.platform,
+      r.product_url,
+      r.total_quantity,
+      r.quantity_per_order,
+      r.order_status,
+      r.cart_amount_limit,
+      r.final_amount_limit,
+      r.max_delivery_days,
+      r.delivery_address,
+      r.gst_details,
+      r.coupon_codes,
+      r.reward_ids,
     ];
     const csv = [headers, ...rows.map(toRow)]
       .map((arr) =>
@@ -220,90 +155,210 @@ export default function Orders() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${tab === "bulk" ? "bulk-orders" : "all-orders"}.csv`;
+    a.download = `orders.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
+  // Modals load
+  const openCardsModal = async (orderRequestId) => {
+    setActiveOrderRequestId(orderRequestId);
+    setCardsOpen(true);
+    setModalLoading(true);
+    setCardRows([]);
+    try {
+      const data = await fetchCardDetails(orderRequestId);
+      setCardRows(data);
+    } catch (e) {
+      setCardRows([]);
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  const openUsersModal = async (orderRequestId) => {
+    setActiveOrderRequestId(orderRequestId);
+    setUsersOpen(true);
+    setModalLoading(true);
+    setUserRows([]);
+    try {
+      const data = await fetchUserDetails(orderRequestId);
+      setUserRows(data);
+    } catch (e) {
+      setUserRows([]);
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  const effectiveRows = useMemo(
+    () => rows.slice(0, effectiveSize),
+    [rows, effectiveSize]
+  );
+
   return (
     <div className="w-full px-4 md:px-6 py-8">
       <div className="w-full bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg border-2 border-gray-200">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 px-6 py-5 border-b-2 border-gray-200 bg-white rounded-t-2xl">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-gradient-to-br from-gray-900 to-gray-800 shadow-md">
-              <Package className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <h2 className="text-xl md:text-2xl font-black text-gray-900">Orders</h2>
-              <p className="text-sm text-gray-600 mt-0.5">View and manage your bulk orders</p>
-            </div>
-          </div>
-
-          {/* Controls */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="relative">
-              <button className="inline-flex items-center gap-2 rounded-xl border-2 border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 shadow-sm">
-                <span className="hidden sm:inline">Last</span>
-                {range === "24h" ? "24 hours" : range === "7d" ? "7 days" : "All"}
-                <ChevronDown className="h-4 w-4 text-gray-500" />
-              </button>
+        <div className="px-6 py-6 border-b-2 border-gray-200 bg-white rounded-t-2xl">
+          <div className="flex flex-col gap-6">
+            {/* Title + Summary */}
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-gray-900 to-gray-800 shadow-md">
+                <Package className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl md:text-3xl font-black text-gray-900 leading-tight">
+                  Orders
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Showing{" "}
+                  <span className="font-bold text-gray-900">{effectiveRows.length}</span> of{" "}
+                  <span className="font-bold text-gray-900">{total}</span> requests
+                </p>
+              </div>
             </div>
 
-            <button
-              onClick={handleDownloadCSV}
-              className="inline-flex items-center gap-2 rounded-xl border-2 border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 hover:bg-gray-50 hover:border-gray-300 hover:shadow-md transition-all duration-200 shadow-sm group"
-              title="Download CSV"
-            >
-              <Download className="h-4 w-4 group-hover:scale-110 transition-transform duration-200" />
-              <span className="hidden sm:inline">Download</span>
-            </button>
+            {/* Filters & Actions */}
+            <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+              {/* Date pickers */}
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="flex-1 min-w-[160px]">
+                  <label className="block text-xs font-bold uppercase tracking-wide text-gray-700 mb-2">
+                    Start Date
+                  </label>
+                  <div className="relative">
+                    <Calendar className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="w-full pl-10 pr-3 py-2.5 text-sm rounded-xl border-2 border-gray-200 bg-white font-semibold hover:border-gray-300 focus:border-gray-900 focus:ring-4 focus:ring-gray-900/10 transition-all duration-200 outline-none"
+                    />
+                  </div>
+                </div>
+                <div className="flex-1 min-w-[160px]">
+                  <label className="block text-xs font-bold uppercase tracking-wide text-gray-700 mb-2">
+                    End Date
+                  </label>
+                  <div className="relative">
+                    <Calendar className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="w-full pl-10 pr-3 py-2.5 text-sm rounded-xl border-2 border-gray-200 bg-white font-semibold hover:border-gray-300 focus:border-gray-900 focus:ring-4 focus:ring-gray-900/10 transition-all duration-200 outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
 
-            <button
-              onClick={handleRefresh}
-              className="inline-flex items-center gap-2 rounded-xl border-2 border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 shadow-sm"
-            >
-              <RotateCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
-              <span className="hidden sm:inline">Refresh</span>
-            </button>
-          </div>
-        </div>
+              {/* Actions */}
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleRefresh}
+                  disabled={loading}
+                  className={`inline-flex items-center justify-center gap-2 rounded-xl border-2 px-5 py-2.5 text-sm font-bold transition-all duration-200 shadow-sm min-w-[110px] ${
+                    loading
+                      ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
+                      : "border-gray-300 bg-white text-gray-900 hover:bg-gray-900 hover:text-white hover:border-gray-900 hover:shadow-md active:scale-95"
+                  }`}
+                  title="Refresh data"
+                >
+                  <RotateCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+                  <span>Refresh</span>
+                </button>
 
-        {/* Tabs */}
-        <div className="px-6 pt-5">
-          <div className="inline-flex rounded-xl bg-gray-100 p-1.5 shadow-inner">
-            <button
-              onClick={() => setTab("bulk")}
-              className={`px-4 py-2.5 text-sm font-bold rounded-xl transition-all duration-200 ${
-                tab === "bulk" 
-                  ? "bg-gradient-to-r from-gray-900 to-gray-800 text-white shadow-lg" 
-                  : "text-gray-600 hover:text-gray-900 hover:bg-white"
-              }`}
-            >
-              Bulk Orders
-            </button>
-            <button
-              onClick={() => setTab("all")}
-              className={`px-4 py-2.5 text-sm font-bold rounded-xl transition-all duration-200 ${
-                tab === "all" 
-                  ? "bg-gradient-to-r from-gray-900 to-gray-800 text-white shadow-lg" 
-                  : "text-gray-600 hover:text-gray-900 hover:bg-white"
-              }`}
-            >
-              All Orders
-            </button>
+                <button
+                  onClick={handleDownloadCSV}
+                  disabled={loading}
+                  className={`inline-flex items-center justify-center gap-2 rounded-xl border-2 px-5 py-2.5 text-sm font-bold transition-all duration-200 shadow-sm min-w-[110px] group ${
+                    loading
+                      ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
+                      : "border-gray-900 bg-gray-900 text-white hover:bg-gray-800 hover:border-gray-800 hover:shadow-lg active:scale-95"
+                  }`}
+                  title="Export to CSV"
+                >
+                  <Download className="h-4 w-4 group-hover:translate-y-0.5 transition-transform duration-200" />
+                  <span>Export</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Table area */}
         <div className="px-6 pb-6">
-          <div className="mt-5 rounded-xl border-2 border-gray-200 overflow-hidden shadow-sm">
-            <OrdersTable rows={rows} variant={tab === "bulk" ? "bulk" : "all"} />
+          <div className="mt-5 rounded-xl border-2 border-gray-200 overflow-hidden shadow-sm bg-white">
+            {err ? (
+              <div className="p-6 text-sm text-rose-600">{err}</div>
+            ) : loading ? (
+              <div className="p-6 text-sm text-gray-600">Loading…</div>
+            ) : (
+              <>
+                <OrdersTable
+                  rows={effectiveRows}
+                  onViewCards={openCardsModal}
+                  onViewUsers={openUsersModal}
+                />
+
+                {/* Footer: Size selector */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-5 py-4 bg-gray-50 border-t-2 border-gray-200">
+                  <p className="text-sm text-gray-600">
+                    Loaded{" "}
+                    <span className="font-bold text-gray-900">{effectiveRows.length}</span> of{" "}
+                    <span className="font-bold text-gray-900">{total}</span> rows
+                  </p>
+
+                  <div className="flex items-center gap-3">
+                    <label className="text-sm font-bold text-gray-700">
+                      Rows per view:
+                    </label>
+                    <select
+                      value={sizeMode}
+                      onChange={(e) => setSizeMode(e.target.value)}
+                      className="rounded-lg border-2 border-gray-300 bg-white px-3 py-2 text-sm font-semibold focus:border-gray-900 focus:ring-4 focus:ring-gray-900/10 transition-all duration-200 outline-none cursor-pointer hover:border-gray-400"
+                    >
+                      <option value="10">10</option>
+                      <option value="50">50</option>
+                      <option value="custom">Custom</option>
+                    </select>
+                    {sizeMode === "custom" && (
+                      <input
+                        type="number"
+                        min={1}
+                        max={1000}
+                        value={customSize}
+                        onChange={(e) => setCustomSize(e.target.value)}
+                        className="w-28 rounded-lg border-2 border-gray-300 bg-white px-3 py-2 text-sm font-semibold focus:border-gray-900 focus:ring-4 focus:ring-gray-900/10 transition-all duration-200 outline-none"
+                        placeholder="e.g., 25"
+                      />
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Modals */}
+      <CardDetailsModal
+        open={cardsOpen}
+        onClose={() => setCardsOpen(false)}
+        loading={modalLoading}
+        rows={cardRows}
+        orderRequestId={activeOrderRequestId}
+      />
+      <UserDetailsModal
+        open={usersOpen}
+        onClose={() => setUsersOpen(false)}
+        loading={modalLoading}
+        rows={userRows}
+        orderRequestId={activeOrderRequestId}
+      />
     </div>
   );
 }

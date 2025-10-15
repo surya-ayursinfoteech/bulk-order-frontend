@@ -9,7 +9,7 @@ import {
   Package2,
   Loader2,
   CheckCircle,
-  AlertTriangle
+  AlertTriangle,
 } from "lucide-react";
 
 export default function ConfirmModal({
@@ -29,8 +29,9 @@ export default function ConfirmModal({
     product_url = "",
     total_quantity = 0,
     quantity_per_order = 0,
-    platform = "Flipkart",
-    order_status = "In_Progress",
+    // Ensure display is UPPERCASE even if something upstream changes
+    platform = "FLIPKART",
+    order_status = "IN_PROGRESS",
     cart_amount_limit = 0,
     final_amount_limit = 0,
     max_delivery_days = 0,
@@ -39,6 +40,9 @@ export default function ConfirmModal({
     coupon_codes = "",
     reward_ids = "",
   } = request;
+
+  const platformUC = String(platform || "").toUpperCase();
+  const statusUC = String(order_status || "").toUpperCase();
 
   const { cardFile = null, userFile = null } = files;
   const { cards = 0, emails = 0 } = counts;
@@ -92,7 +96,7 @@ export default function ConfirmModal({
                     Platform / Status
                   </p>
                   <p className="font-medium text-gray-900">
-                    {platform} • {order_status}
+                    {platformUC} • {statusUC}
                   </p>
                 </div>
               </div>
